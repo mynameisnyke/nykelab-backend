@@ -2,13 +2,16 @@ package probe_function
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 	"strings"
 	"time"
 
 	"cloud.google.com/go/firestore"
+	"cloud.google.com/go/functions/metadata"
 	"github.com/mynameisnyke/nykelab-backend/pkg/firebase"
+	"github.com/mynameisnyke/nykelab-backend/pkg/label"
 	"github.com/mynameisnyke/nykelab-backend/pkg/probe"
 )
 
@@ -42,6 +45,19 @@ var projectID = os.Getenv("GOOGLE_CLOUD_PROJECT")
 // the `original` value of the document to upper case.
 func ProbeFile(ctx context.Context, e FirestoreEvent) error {
 
+	meta, err := metadata.FromContext(ctx)
+	if err != nil {
+		// Assume an error on the function invoker and try again.
+		return fmt.Errorf("metadata.FromContext: %v", err)
+	}
+
+	// Ignore events that are too old.
+	expiration := meta.Timestamp.Add(60 * time.Second)
+	if time.Now().After(expiration) {
+		log.Printf("event timeout: halting retries for expired event '%q'", meta.EventID)
+		return nil
+	}
+
 	fullPath := strings.Split(e.Value.Name, "/documents/")[1]
 	pathParts := strings.Split(fullPath, "/")
 	doc := strings.Join(pathParts[1:], "/")
@@ -53,28 +69,47 @@ func ProbeFile(ctx context.Context, e FirestoreEvent) error {
 	case "video": // Since this is a video file, we're going to make a call to ffmpeg and update the documnet with the probe data
 		probeData, err := probe.ProbeMedia(src)
 		if err != nil {
-			log.Panicf("Error probing file: %v", err)
+			return fmt.Errorf("Error probing file: %v", err)
 		}
 
 		videoStream := probeData.FirstVideoStream()
 
+		myDate, err := time.Parse("2022-06-16T18:01:44.000000Z", videoStream.Tags.CreationTime)
+		if err != nil {
+			return fmt.Errorf("Couldnt parse date from %v: %v", doc, err)
+		}
+
 		docUpdates := &[]firestore.Update{
 			{
-				Path:  "Orientation",
+				Path:  "orientation",
 				Value: videoStream.DisplayAspectRatio,
 			}, {
-				Path:  "Creation_Date",
-				Value: videoStream.Tags.CreationTime,
-			},
-			{
-				Path:  "Testing",
-				Value: "Test worked from main",
+				Path:  "creation_Date",
+				Value: myDate,
 			},
 		}
 
 		firebase.UpdateDoc(doc, docUpdates)
+	case "image":
+
+		// Here we generate the labes for our image
+		labels, err := label.LabelImage(src)
+		if err != nil {
+			return fmt.Errorf("Error generating labels: %v", err)
+		}
+
+		docUpdates := &[]firestore.Update{
+			{
+				Path:  "labels",
+				Value: labels,
+			},
+		}
+
+		firebase.UpdateDoc(doc, docUpdates)
+
 	default:
 		log.Panicf("The supplied documnet does not contain either a video or image file: %v", doc)
+		return nil
 	}
 
 	return nil
