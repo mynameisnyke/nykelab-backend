@@ -3,7 +3,6 @@ package identify
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log"
 	"os/exec"
 
@@ -26,33 +25,32 @@ func init() {
 
 }
 
-func IdentifyImage(ctx context.Context, inputBucket string, name string) (*MagickResult, error) {
+func IdentifyImage(ctx context.Context, inputBucket string, name string) (*MagickInfo, error) {
 
 	// Here we map out input blob to a reader
-	inputBlob := storageClient.Bucket(inputBucket).Object(name)
-	r, err := inputBlob.NewReader(ctx)
+	readInputBlob := storageClient.Bucket(inputBucket).Object(name)
+	r, err := readInputBlob.NewReader(ctx)
 
 	if err != nil {
-		fmt.Errorf("NewReader: %v", err)
+		log.Panicf("NewReader: %v", err)
 	}
 	// Use - as input and output to use stdin and stdout.
-	cmd := exec.Command("magick", "convert", "-", "json:")
+	cmd := exec.Command("convert", "-", "json:")
 	cmd.Stdin = r
 	stdout, err := cmd.Output()
 
-	var metadata MagickResult
+	var metadata *MagickInfo
 
 	if err != nil {
-		fmt.Errorf("cmd.Run: %v", err)
+		log.Panicf("cmd.Run: %v", err)
 	}
 
-	err2 := json.Unmarshal(stdout, &metadata)
+	err = json.Unmarshal(stdout, &metadata)
 
 	if err != nil {
-		fmt.Errorf("Could not unmarshall json: %v", err2)
+		log.Panicf("Could not unmarshall json: %v", err)
 	}
 
-	fmt.Print()
+	return metadata, nil
 
-	return &metadata, nil
 }

@@ -11,6 +11,7 @@ import (
 	"cloud.google.com/go/firestore"
 	"cloud.google.com/go/functions/metadata"
 	"github.com/mynameisnyke/nykelab-backend/pkg/firebase"
+	"github.com/mynameisnyke/nykelab-backend/pkg/identify"
 	"github.com/mynameisnyke/nykelab-backend/pkg/label"
 	"github.com/mynameisnyke/nykelab-backend/pkg/probe"
 )
@@ -26,23 +27,15 @@ type FirestoreEvent struct {
 
 // FirestoreValue holds Firestore fields.
 type FirestoreValue struct {
-	CreateTime time.Time `json:"createTime"`
-	// Fields is the data for this value. The type depends on the format of your
-	// database. Log an interface{} value and inspect the result to see a JSON
-	// representation of your database fields.
+	CreateTime time.Time                    `json:"createTime"`
 	Fields     map[string]map[string]string `json:"fields"`
 	Name       string                       `json:"name"`
 	UpdateTime time.Time                    `json:"updateTime"`
 }
 
-// MyData represents a value from Firestore. The type definition depends on the
-// format of your database.
-
 // GOOGLE_CLOUD_PROJECT is automatically set by the Cloud Functions runtime.
 var projectID = os.Getenv("GOOGLE_CLOUD_PROJECT")
 
-// MakeUpperCase is triggered by a change to a Firestore document. It updates
-// the `original` value of the document to upper case.
 func ProbeFile(ctx context.Context, e FirestoreEvent) error {
 
 	meta, err := metadata.FromContext(ctx)
@@ -63,10 +56,23 @@ func ProbeFile(ctx context.Context, e FirestoreEvent) error {
 	doc := strings.Join(pathParts[1:], "/")
 	fileType := e.Value.Fields["type"]["stringValue"]
 	src := e.Value.Fields["src"]["stringValue"]
+	uri := e.Value.Fields["uri"]["stringValue"]
+	log.Printf("Here is the uri value that's being parsed: %v", uri)
+	bucket, err := identify.ParseBucket(uri)
+	if err != nil {
+		log.Panicf("Could not parse bucket for %v: %v", src, err)
+	}
 
-	// Let's check what type of file it is and callt he appropriate program
+	obj, err := identify.ParseObject(uri)
+	if err != nil {
+		log.Panicf("Could not parse object for %v: %v", src, err)
+	}
+
+	log.Printf("This is your bucket %s, and this is your string %s", *bucket, *obj)
+
+	// Let's check what type of file it is and call the appropriate program
 	switch fileType {
-	case "video": // Since this is a video file, we're going to make a call to ffmpeg and update the documnet with the probe data
+	case "video": // Since this is a video file, we're going to make a call to ffmpeg and update the documentt with the probe data
 		probeData, err := probe.ProbeMedia(src)
 		if err != nil {
 			return fmt.Errorf("Error probing file: %v", err)
@@ -74,7 +80,7 @@ func ProbeFile(ctx context.Context, e FirestoreEvent) error {
 
 		videoStream := probeData.FirstVideoStream()
 
-		myDate, err := time.Parse("2022-06-16T18:01:44.000000Z", videoStream.Tags.CreationTime)
+		creationDate, err := time.Parse("2022-06-16T18:01:44.000000Z", videoStream.Tags.CreationTime)
 		if err != nil {
 			return fmt.Errorf("Couldnt parse date from %v: %v", doc, err)
 		}
@@ -85,7 +91,7 @@ func ProbeFile(ctx context.Context, e FirestoreEvent) error {
 				Value: videoStream.DisplayAspectRatio,
 			}, {
 				Path:  "creation_Date",
-				Value: myDate,
+				Value: creationDate,
 			},
 		}
 
@@ -98,10 +104,26 @@ func ProbeFile(ctx context.Context, e FirestoreEvent) error {
 			return fmt.Errorf("Error generating labels: %v", err)
 		}
 
+		// Let's find the create time using exif dataa
+		imageMeta, err := identify.IdentifyImage(ctx, *bucket, *obj)
+		if err != nil {
+			return fmt.Errorf("Error parsing metada for image %v: %v", src, err)
+		}
+
+		createTime, err := time.Parse("2006:01:02 15:04:05", (*imageMeta).Image.Properties["exif:DateTimeOriginal"])
+		if err != nil {
+			return fmt.Errorf("Could not parse create time from the image %v: %v", src, err)
+		}
+		log.Printf("Here is the image create time: %v", createTime)
+
 		docUpdates := &[]firestore.Update{
 			{
 				Path:  "labels",
 				Value: labels,
+			},
+			{
+				Path:  "create_time",
+				Value: createTime,
 			},
 		}
 
