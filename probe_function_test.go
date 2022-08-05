@@ -1,13 +1,20 @@
 package probe_function
 
 import (
+	"log"
 	"testing"
+
+	"github.com/mynameisnyke/nykelab-backend/pkg/convert"
+	"github.com/mynameisnyke/nykelab-backend/pkg/storage"
 )
 
 func TestConvert(t *testing.T) {
 
-	stdout, outputFile, err := ConvertImage("/Volumes/Whiskey/Images/Meems/asukabait.gif")
+	stdout, outputFile, err := convert.ConvertImage("/Volumes/Whiskey/Images/Meems/watsonpain.png")
+	if err != nil {
+		log.Panicf("%v", err)
+	}
 
-	WriteFileToGCS(stdout, outputFile)
+	storage.WriteFileToGCS(stdout, *outputFile)
 
 }
