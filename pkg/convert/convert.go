@@ -12,7 +12,8 @@ import (
 
 // Global API clients used across function invocations.
 var (
-	storageClient *storage.Client
+	storageClient  *storage.Client
+	outputImageExt string = "webp"
 )
 
 func init() {
@@ -26,34 +27,23 @@ func init() {
 
 }
 
-func ConvertImage(source string) (outputStream []byte, err error) {
+func ConvertImage(source string) (outputStream []byte, outputFile *string, err error) {
 
-	ctx := context.Background()
-
-	baseFileName := strings.Split(source, ".")[0]
+	fileNameSlice := strings.Split(source, "/")
+	fileName := fileNameSlice[len(fileNameSlice)-1]
+	baseFileName := strings.Split(fileName, ".")[0]
+	outputFileName := fmt.Sprintf("%s.%s", baseFileName, outputImageExt)
 	// cmd := exec.Command("convert", source, fmt.Sprintf("%s.webp", baseFileName))
 	cmd := exec.Command("convert", source, "webp:-")
 	stdout, err := cmd.Output()
 
 	if err != nil {
 		log.Fatalf("Could not covert %s", source)
-		return nil, err
+		return nil, nil, err
+
 	}
+	return stdout, &outputFileName, nil
 
-	wc := storageClient.Bucket("mdm-archive").Object(fmt.Sprintf("%s.webp", baseFileName)).NewWriter(ctx)
-
-	_, err = wc.Write(stdout)
-	if err != nil {
-		log.Fatalf("Could not print upload %s to cloud storage", source)
-		return nil, err
-	}
-
-	if err := wc.Close(); err != nil {
-		log.Fatalf("Could not close out upload for %s", source)
-		return nil, err
-	}
-
-	return stdout, nil
 }
 
 // func IdentifyImage(ctx context.Context, inputBucket string, name string) (*MagickInfo, error) {
