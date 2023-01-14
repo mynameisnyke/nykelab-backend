@@ -1,5 +1,33 @@
 package identify
 
+import (
+	"context"
+	"encoding/json"
+	"log"
+	"net/http"
+	"os/exec"
+
+	"cloud.google.com/go/storage"
+)
+
+// Global API clients used across function invocations.
+var (
+	storageClient *storage.Client
+)
+
+func init() {
+	// Declare a separate err variable to avoid shadowing the client variables.
+	var err error
+
+	storageClient, err = storage.NewClient(context.Background())
+	if err != nil {
+		log.Fatalf("storage.NewClient: %v", err)
+	}
+
+}
+
+type MagickResult []MagickInfo
+
 type MagickInfo struct {
 	Image Image `json:"image"`
 }
@@ -19,13 +47,9 @@ type Image struct {
 	Colorspace        string            `json:"colorspace"`
 	Depth             int64             `json:"depth"`
 	BaseDepth         int64             `json:"baseDepth"`
-	ChannelDepth      ChannelDepth      `json:"channelDepth"`
 	Pixels            int64             `json:"pixels"`
-	ImageStatistics   ImageStatistics   `json:"imageStatistics"`
-	ChannelStatistics ChannelStatistics `json:"channelStatistics"`
 	RenderingIntent   string            `json:"renderingIntent"`
 	Gamma             float64           `json:"gamma"`
-	Chromaticity      Chromaticity      `json:"chromaticity"`
 	BackgroundColor   string            `json:"backgroundColor"`
 	BorderColor       string            `json:"borderColor"`
 	MatteColor        string            `json:"matteColor"`
@@ -40,8 +64,6 @@ type Image struct {
 	Quality           int64             `json:"quality"`
 	Orientation       string            `json:"orientation"`
 	Properties        map[string]string `json:"properties"`
-	Profiles          Profiles          `json:"profiles"`
-	Artifacts         Artifacts         `json:"artifacts"`
 	Tainted           bool              `json:"tainted"`
 	Filesize          string            `json:"filesize"`
 	NumberPixels      string            `json:"numberPixels"`
@@ -51,43 +73,6 @@ type Image struct {
 	Version           string            `json:"version"`
 }
 
-type Artifacts struct {
-	Filename string `json:"filename"`
-}
-
-type ChannelDepth struct {
-	Red   int64 `json:"red"`
-	Green int64 `json:"green"`
-	Blue  int64 `json:"blue"`
-}
-
-type ChannelStatistics struct {
-	Red   Blue `json:"red"`
-	Green Blue `json:"green"`
-	Blue  Blue `json:"blue"`
-}
-
-type Blue struct {
-	Min               string `json:"min"`
-	Max               string `json:"max"`
-	Mean              string `json:"mean"`
-	StandardDeviation string `json:"standardDeviation"`
-	Kurtosis          string `json:"kurtosis"`
-	Skewness          string `json:"skewness"`
-}
-
-type Chromaticity struct {
-	RedPrimary   Primary `json:"redPrimary"`
-	GreenPrimary Primary `json:"greenPrimary"`
-	BluePrimary  Primary `json:"bluePrimary"`
-	WhitePrimary Primary `json:"whitePrimary"`
-}
-
-type Primary struct {
-	X float64 `json:"x"`
-	Y float64 `json:"y"`
-}
-
 type Geometry struct {
 	Width  int64 `json:"width"`
 	Height int64 `json:"height"`
@@ -95,35 +80,37 @@ type Geometry struct {
 	Y      int64 `json:"y"`
 }
 
-type ImageStatistics struct {
-	All Blue `json:"all"`
-}
-
 type PrintSize struct {
-	X string `json:"x"`
-	Y string `json:"y"`
+	X float64 `json:"x"`
+	Y float64 `json:"y"`
 }
 
-type Profiles struct {
-	The8Bim The8_Bim `json:"8bim"`
-	Exif    The8_Bim `json:"exif"`
-	Icc     The8_Bim `json:"icc"`
-	Iptc    Iptc     `json:"iptc"`
-	Xmp     The8_Bim `json:"xmp"`
-}
+func IdentifyImage(url string) (*MagickResult, error) {
 
-type The8_Bim struct {
-	Length string `json:"length"`
-}
+	resp, err := http.Get(url)
+	if err != nil {
+		// handle error
+		return nil, err
+	}
+	defer resp.Body.Close()
 
-type Iptc struct {
-	City190             []string      `json:"City[1,90]"`
-	Unknown20           []interface{} `json:"unknown[2,0]"`
-	CreatedDate255      []string      `json:"Created Date[2,55]"`
-	CreatedTime260      []string      `json:"Created Time[2,60]"`
-	Unknown262          []string      `json:"unknown[2,62]"`
-	Unknown263          []string      `json:"unknown[2,63]"`
-	Byline280           []string      `json:"Byline[2,80]"`
-	CopyrightString2116 []string      `json:"Copyright String[2,116]"`
-	Length              string        `json:"length"`
+	// Use - as input and output to use stdin and stdout.
+	cmd := exec.Command("convert", "-", "json:")
+	cmd.Stdin = resp.Body
+	stdout, err := cmd.Output()
+
+	var metadata *MagickResult
+
+	if err != nil {
+		log.Panicf("cmd.Run: %v", err)
+	}
+
+	err = json.Unmarshal(stdout, &metadata)
+
+	if err != nil {
+		log.Panicf("Could not unmarshall json: %v", err)
+	}
+
+	return metadata, nil
+
 }

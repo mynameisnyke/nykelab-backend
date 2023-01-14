@@ -25,6 +25,7 @@ type Media struct {
 	Galleries          []string  `json:"gallery_ids" firestore:"gallery_ids"`
 	DateAdded          time.Time `json:"date_added" firestore:"date_added"`
 	DateCreated        time.Time `json:"date_created" firestore:"date_created,omitempty"`
+	Status             string    `json:"status" firestore:"status"`
 }
 
 type MediaService struct {
