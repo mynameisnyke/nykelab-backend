@@ -87,8 +87,6 @@ func (as *ArticleService) Query(q *ArticleQueryInput) ([]*firestore.DocumentSnap
 
 	collRef := as.db.Collection(as.collection)
 
-	fmt.Printf("QUERY:%v\n", query)
-
 	if q.FileType != "" {
 		query = collRef.Where("filetype", "==", q.FileType)
 	}

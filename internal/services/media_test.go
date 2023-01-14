@@ -63,7 +63,7 @@ func TestQuery(t *testing.T) {
 
 	testMedia := &Media{
 		FileType: "image/test-query",
-		Name:     "test.jpg",
+		Name:     "query.jpg",
 		Tags:     []string{"landscape", "dogs"},
 	}
 
@@ -72,14 +72,18 @@ func TestQuery(t *testing.T) {
 		t.Error(err)
 	}
 
-	_, err = ms.Create(testMedia)
+	// Create documents to query
+	for i := 0; i < 10; i++ {
 
-	if err != nil {
-		t.Error(err)
+		_, err = ms.Create(testMedia)
+
+		if err != nil {
+			t.Error(err)
+		}
 	}
 
 	t.Run("Should return items by filetype", func(t *testing.T) {
-		items, err := ms.Query(&MediaQueryInput{
+		output, err := ms.Query(&MediaQueryInput{
 			FileType: testMedia.FileType,
 		})
 
@@ -87,8 +91,8 @@ func TestQuery(t *testing.T) {
 			t.Error(err)
 		}
 
-		got := len(items)
-		want := 1
+		got := len(output.Items)
+		want := 5
 
 		if got != want {
 			t.Errorf("got %d, wanted %d", got, want)
@@ -96,7 +100,7 @@ func TestQuery(t *testing.T) {
 	})
 
 	t.Run("Should return items by tags", func(t *testing.T) {
-		items, err := ms.Query(&MediaQueryInput{
+		output, err := ms.Query(&MediaQueryInput{
 			Tags: testMedia.Tags,
 		})
 
@@ -104,8 +108,42 @@ func TestQuery(t *testing.T) {
 			t.Error(err)
 		}
 
-		got := len(items)
-		want := 1
+		got := len(output.Items)
+		want := 5
+
+		if got != want {
+			t.Errorf("got %d, wanted %d", got, want)
+		}
+	})
+
+	t.Run("Should return all 10 test items", func(t *testing.T) {
+		output, err := ms.Query(&MediaQueryInput{
+			Tags:  testMedia.Tags,
+			Limit: 5,
+		})
+
+		if err != nil {
+			t.Error(err)
+		}
+
+		output2, err := ms.Query(&MediaQueryInput{
+			Tags:   testMedia.Tags,
+			Limit:  5,
+			Offset: output.Offset,
+		})
+
+		if err != nil {
+			t.Error(err)
+		}
+
+		output.Items = append(output.Items, output2.Items...)
+
+		if output.Items[0].ID == output.Items[7].ID {
+			t.Error("Duplicated items")
+		}
+
+		got := len(output.Items)
+		want := 10
 
 		if got != want {
 			t.Errorf("got %d, wanted %d", got, want)
