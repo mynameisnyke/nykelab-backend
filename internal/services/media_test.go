@@ -7,7 +7,7 @@ import (
 )
 
 func TestMediaClient(t *testing.T) {
-	_, err := New("dev")
+	_, err := NewMediaService("dev")
 	if err != nil {
 		t.Error(err)
 	}
@@ -15,7 +15,7 @@ func TestMediaClient(t *testing.T) {
 
 func TestCreate(t *testing.T) {
 
-	ms, err := New("dev")
+	ms, err := NewMediaService("dev")
 	if err != nil {
 		t.Error(err)
 	}
@@ -41,7 +41,7 @@ func TestUpdate(t *testing.T) {
 		Name:     "test.jpg",
 	}
 
-	ms, err := New("dev")
+	ms, err := NewMediaService("dev")
 	if err != nil {
 		t.Error(err)
 	}
@@ -67,7 +67,7 @@ func TestQuery(t *testing.T) {
 		Tags:     []string{"landscape", "dogs"},
 	}
 
-	ms, err := New("dev")
+	ms, err := NewMediaService("dev")
 	if err != nil {
 		t.Error(err)
 	}

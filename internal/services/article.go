@@ -44,9 +44,9 @@ func NewArticleService(stage string) (*ArticleService, error) {
 	}
 
 	if stage == "dev" {
-		return &ArticleService{db, devCollection}, nil
+		return &ArticleService{db, articleDevCollection}, nil
 	}
-	return &ArticleService{db, prodCollection}, nil
+	return &ArticleService{db, articleProdCollection}, nil
 }
 
 // Creates a record and returns the ID

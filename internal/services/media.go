@@ -10,20 +10,21 @@ import (
 )
 
 const (
-	devCollection     = "media_dev"
-	prodCollection    = "meida_prod"
-	defaultMediaLimit = 5
+	mediaDevCollection  = "media_dev"
+	mediaProdCollection = "meida_prod"
+	defaultMediaLimit   = 5
 )
 
 type Media struct {
 	Name               string    `json:"name" firestore:"name"`
 	FileType           string    `json:"filetype" firestore:"filetype"`
 	FileSize           string    `json:"filesize" firestore:"filesize"`
-	RequiredTranscodes []string  `json:"RequiredTranscodes" firestore:"required_transcodes"`
+	RequiredTranscodes []string  `json:"required_transcodes" firestore:"required_transcodes"`
 	Tags               []string  `json:"tags" firestore:"tags"`
 	ID                 string    `json:"id" firestore:"id"`
 	Galleries          []string  `json:"gallery_ids" firestore:"gallery_ids"`
 	DateAdded          time.Time `json:"date_added" firestore:"date_added"`
+	DateCreated        time.Time `json:"date_created" firestore:"date_created,omitempty"`
 }
 
 type MediaService struct {
@@ -44,7 +45,7 @@ type MediaQueryOutput struct {
 	Items  []*Media
 }
 
-func New(stage string) (*MediaService, error) {
+func NewMediaService(stage string) (*MediaService, error) {
 
 	ctx := context.Background()
 
@@ -55,9 +56,9 @@ func New(stage string) (*MediaService, error) {
 	}
 
 	if stage == "dev" {
-		return &MediaService{db, devCollection}, nil
+		return &MediaService{db, mediaDevCollection}, nil
 	}
-	return &MediaService{db, prodCollection}, nil
+	return &MediaService{db, mediaProdCollection}, nil
 }
 
 // Creates a record and returns the ID
@@ -110,7 +111,7 @@ func (ms *MediaService) Query(q *MediaQueryInput) (*MediaQueryOutput, error) {
 
 		// Check to see if filetype were supplied
 		if q.FileType != "" {
-			query = collRef.Where("filetype", "==", q.FileType).Limit(q.Limit).StartAfter(q.Offset)
+			query = collRef.Where("filetype", "==", q.FileType).Limit(q.Limit).StartAfter(q.Offset).OrderBy("date_added", firestore.Desc)
 		}
 
 		// Check to see if tags were suppleid
