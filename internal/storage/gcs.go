@@ -7,7 +7,10 @@ import (
 	"cloud.google.com/go/storage"
 )
 
-var storageClient *storage.Client
+var (
+	bucket        string = "nykelab.appspot.com"
+	storageClient *storage.Client
+)
 
 func init() {
 	// Declare a separate err variable to avoid shadowing the client variables.
@@ -22,7 +25,7 @@ func init() {
 
 func WriteFileToGCS(stream []byte, key string) (err error) {
 
-	wc := storageClient.Bucket("mdm-archive").Object(key).NewWriter(context.Background())
+	wc := storageClient.Bucket(bucket).Object(key).NewWriter(context.Background())
 
 	_, err = wc.Write(stream)
 	if err != nil {

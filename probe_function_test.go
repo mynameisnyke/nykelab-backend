@@ -10,7 +10,7 @@ import (
 
 func TestConvert(t *testing.T) {
 
-	stdout, outputFile, err := convert.ConvertImage("/Volumes/Whiskey/Images/Meems/watsonpain.png")
+	stdout, outputFile, err := convert.ConvertImage("https://firebasestorage.googleapis.com/v0/b/nykelab.appspot.com/o/_7M30503.jpg?alt=media&token=a4a575ba-b6ca-448c-bf5f-811833dc2374", "_7M30503.jpg")
 	if err != nil {
 		log.Panicf("%v", err)
 	}

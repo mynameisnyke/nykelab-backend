@@ -28,3 +28,10 @@ func ParseObject(uri string) (o *string, err error) {
 
 	return &object, nil
 }
+
+func DetermineOrientation(width int, height int) (vertial bool) {
+	if width > height {
+		return false
+	}
+	return true
+}

@@ -10,10 +10,12 @@ import (
 
 	"cloud.google.com/go/firestore"
 	"cloud.google.com/go/functions/metadata"
+	"github.com/mynameisnyke/nykelab-backend/pkg/convert"
 	"github.com/mynameisnyke/nykelab-backend/pkg/firebase"
 	"github.com/mynameisnyke/nykelab-backend/pkg/identify"
 	"github.com/mynameisnyke/nykelab-backend/pkg/label"
 	"github.com/mynameisnyke/nykelab-backend/pkg/probe"
+	"github.com/mynameisnyke/nykelab-backend/pkg/storage"
 )
 
 // FirestoreEvent is the payload of a Firestore event.
@@ -35,6 +37,42 @@ type FirestoreValue struct {
 
 // GOOGLE_CLOUD_PROJECT is automatically set by the Cloud Functions runtime.
 var projectID = os.Getenv("GOOGLE_CLOUD_PROJECT")
+
+func ConvertFile(ctx context.Context, e FirestoreEvent) error {
+
+	meta, err := metadata.FromContext(ctx)
+	if err != nil {
+		// Assume an error on the function invoker and try again.
+		return fmt.Errorf("metadata.FromContext: %v", err)
+	}
+
+	// Ignore events that are too old.
+	expiration := meta.Timestamp.Add(60 * time.Second)
+	if time.Now().After(expiration) {
+		log.Printf("event timeout: halting retries for expired event '%q'", meta.EventID)
+		return nil
+	}
+
+	fileType := e.Value.Fields["type"]["stringValue"]
+	src := e.Value.Fields["src"]["stringValue"]
+	filename := e.Value.Fields["name"]["stringValue"]
+
+	switch fileType {
+	case "image":
+		stdout, outputFile, err := convert.ConvertImage(src, filename)
+		if err != nil {
+			log.Panicf("%v", err)
+		}
+
+		err = storage.WriteFileToGCS(stdout, *outputFile)
+		if err != nil {
+			log.Panicf("%v", err)
+		}
+	}
+
+	return nil
+
+}
 
 func ProbeFile(ctx context.Context, e FirestoreEvent) error {
 
@@ -116,6 +154,9 @@ func ProbeFile(ctx context.Context, e FirestoreEvent) error {
 		}
 		log.Printf("Here is the image create time: %v", createTime)
 
+		// Let's use the width and height from the metadata to determine if this image is vertical or horizontal
+		vertical := identify.DetermineOrientation(int(imageMeta.Image.Geometry.Width), int(imageMeta.Image.Geometry.Height))
+
 		docUpdates := &[]firestore.Update{
 			{
 				Path:  "labels",
@@ -124,6 +165,10 @@ func ProbeFile(ctx context.Context, e FirestoreEvent) error {
 			{
 				Path:  "create_time",
 				Value: createTime,
+			},
+			{
+				Path:  "vertical",
+				Value: vertical,
 			},
 		}
 
