@@ -8,7 +8,7 @@ import (
 
 	"github.com/GoogleCloudPlatform/functions-framework-go/functions"
 	"github.com/cloudevents/sdk-go/v2/event"
-	"github.com/mynameisnyke/nykelab-backend/services/media"
+	services "github.com/mynameisnyke/nykelab-backend/services/media"
 	"github.com/mynameisnyke/nykelab-backend/services/queue"
 	"github.com/mynameisnyke/nykelab-backend/services/transcode"
 )
@@ -67,8 +67,8 @@ func createTranscode(ctx context.Context, e event.Event) error {
 	if err != nil {
 		return err
 	}
+	services.Media.
 
 	// Update the DB
-	db := media.NewMediaService()
 	return nil
 }
