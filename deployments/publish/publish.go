@@ -64,7 +64,7 @@ func publishStorageEvent(ctx context.Context, e event.Event) error {
 		_, err = svc.Create(&queue.Queue{
 			Status:    "initialized",
 			InputUri:  fmt.Sprintf("gs://%s/%s", data.Bucket, data.Name),
-			OutputUri: fmt.Sprintf("gs://%s/%s", videoOutputBucket, data.MetaData.MediaId),
+			OutputUri: fmt.Sprintf("gs://%s/%s/", videoOutputBucket, data.MetaData.MediaId),
 			MediaID:   data.MetaData.MediaId,
 			Type:      "transcode",
 		})

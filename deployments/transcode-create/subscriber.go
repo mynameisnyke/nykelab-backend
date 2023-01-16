@@ -2,6 +2,8 @@ package publish
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -40,7 +42,7 @@ type MessagePublishedData struct {
 // See the documentation for more details:
 // https://cloud.google.com/pubsub/docs/reference/rest/v1/PubsubMessage
 type PubSubMessage struct {
-	Data queue.Queue `json:"data"`
+	Data string `json:"data"`
 }
 
 // publishStorageEvent consumes a CloudEvent message and logs details about the changed object.
@@ -62,10 +64,14 @@ func createTranscode(ctx context.Context, e event.Event) error {
 		return err
 	}
 
+	var q queue.Queue
+	data, err := base64.StdEncoding.DecodeString(msg.Message.Data)
+	err = json.Unmarshal(data, &q)
+
 	// Create the transcode job
 	job, err := svc.CreateJob(&transcode.CreateJobInput{
-		InputUri:  msg.Message.Data.InputUri,
-		OutputUri: msg.Message.Data.OutputUri,
+		InputUri:  q.InputUri,
+		OutputUri: q.OutputUri,
 		Preset:    "h264",
 	})
 
@@ -73,10 +79,12 @@ func createTranscode(ctx context.Context, e event.Event) error {
 		return err
 	}
 
-	ms, err := media.NewMediaService(&media.MediaServiceConfig{Project: project, Collection: collection})
+	ms, err := media.NewMediaService(&media.MediaServiceConfig{
+		Project:    project,
+		Collection: collection})
+
 	var updates []firestore.Update
 	updates = append(updates, firestore.Update{Path: "transcode_id", Value: job.Name})
-	ms.Update(msg.Message.Data.MediaID, &updates)
-	// Update the DB
+	ms.Update(q.MediaID, &updates)
 	return nil
 }

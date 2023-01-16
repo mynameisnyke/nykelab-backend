@@ -1,4 +1,4 @@
-module nykelab.com/subscriber
+module nykelab.com/transcoder-subscriber
 
 go 1.19
 
@@ -6,7 +6,7 @@ require (
 	cloud.google.com/go/firestore v1.9.0
 	github.com/GoogleCloudPlatform/functions-framework-go v1.6.1
 	github.com/cloudevents/sdk-go/v2 v2.13.0
-	github.com/mynameisnyke/nykelab-backend v0.0.0-20230116062608-dde4885f5905
+	github.com/mynameisnyke/nykelab-backend v0.0.0-20230116071645-7d9039eeb4dc
 )
 
 require (
