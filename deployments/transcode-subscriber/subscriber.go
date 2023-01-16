@@ -6,22 +6,25 @@ import (
 	"log"
 	"os"
 
+	"cloud.google.com/go/firestore"
 	"github.com/GoogleCloudPlatform/functions-framework-go/functions"
 	"github.com/cloudevents/sdk-go/v2/event"
-	services "github.com/mynameisnyke/nykelab-backend/services/media"
+	"github.com/mynameisnyke/nykelab-backend/services/media"
 	"github.com/mynameisnyke/nykelab-backend/services/queue"
 	"github.com/mynameisnyke/nykelab-backend/services/transcode"
 )
 
 var (
-	queueName         string
+	collection        string
 	project           string
 	videoOutputBucket string
+	parentPath        string
 )
 
 func init() {
-	queueName = os.Getenv("QUEUE_NAME")
+	collection = os.Getenv("COLLECTION")
 	project = os.Getenv("PROJECT")
+	parentPath = os.Getenv("PARENT_PATH")
 	videoOutputBucket = os.Getenv("VIDEO_OUTPUT_BUCKET")
 	functions.CloudEvent("CreateTranscode", createTranscode)
 }
@@ -51,7 +54,9 @@ func createTranscode(ctx context.Context, e event.Event) error {
 		return fmt.Errorf("event.DataAs: %v", err)
 	}
 
-	svc, err := transcode.NewTranscodeService()
+	svc, err := transcode.NewTranscodeService(&transcode.TranscodeServiceConfig{
+		ParentPath: parentPath,
+	})
 
 	if err != nil {
 		return err
@@ -67,8 +72,11 @@ func createTranscode(ctx context.Context, e event.Event) error {
 	if err != nil {
 		return err
 	}
-	services.Media.
 
+	ms, err := media.NewMediaService(&media.MediaServiceConfig{Project: project, Collection: collection})
+	var updates []firestore.Update
+	updates = append(updates, firestore.Update{Path: "transcode_id", Value: job.Name})
+	ms.Update(msg.Message.Data.MediaID, &updates)
 	// Update the DB
 	return nil
 }

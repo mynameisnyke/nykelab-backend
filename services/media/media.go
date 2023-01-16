@@ -10,9 +10,7 @@ import (
 )
 
 const (
-	mediaDevCollection  = "media_dev"
-	mediaProdCollection = "meida_prod"
-	defaultMediaLimit   = 5
+	defaultMediaLimit = 5
 )
 
 type Media struct {
@@ -46,20 +44,22 @@ type MediaQueryOutput struct {
 	Items  []*Media
 }
 
-func NewMediaService(stage string) (*MediaService, error) {
+type MediaServiceConfig struct {
+	Project    string
+	Collection string
+}
+
+func NewMediaService(config *MediaServiceConfig) (*MediaService, error) {
 
 	ctx := context.Background()
 
 	// Get a client
-	db, err := firestore.NewClient(ctx, "nykelab")
+	db, err := firestore.NewClient(ctx, config.Project)
 	if err != nil {
 		return nil, err
 	}
 
-	if stage == "dev" {
-		return &MediaService{db, mediaDevCollection}, nil
-	}
-	return &MediaService{db, mediaProdCollection}, nil
+	return &MediaService{db, config.Collection}, nil
 }
 
 // Creates a record and returns the ID
