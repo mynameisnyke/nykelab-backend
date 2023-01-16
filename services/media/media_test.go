@@ -59,6 +59,36 @@ func TestUpdate(t *testing.T) {
 	}
 }
 
+func TestGet(t *testing.T) {
+
+	testMedia := &Media{
+		FileType: "image/test-query",
+		Name:     "query.jpg",
+		Tags:     []string{"landscape", "dogs"},
+	}
+
+	ms, err := NewMediaService("dev")
+	if err != nil {
+		t.Error(err)
+	}
+
+	id, err := ms.Create(testMedia)
+
+	if err != nil {
+		t.Error(err)
+	}
+
+	t.Run("Should get the document by id", func(t *testing.T) {
+
+		_, err := ms.Get(*id)
+
+		if err != nil {
+			t.Error(err)
+		}
+	})
+
+}
+
 func TestQuery(t *testing.T) {
 
 	testMedia := &Media{

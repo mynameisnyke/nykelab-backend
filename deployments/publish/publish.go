@@ -33,7 +33,10 @@ type StorageObjectData struct {
 	Metageneration int64     `json:"metageneration,string,omitempty"`
 	TimeCreated    time.Time `json:"timeCreated,omitempty"`
 	ContentType    string    `json:"contentType,omitempty"`
-	MediaID        string    `json:"metadata.media_id"`
+	MetaData       MetaData  `json:"metadata"`
+}
+type MetaData struct {
+	MediaId string `json:"media_id"`
 }
 
 // publishStorageEvent consumes a CloudEvent message and logs details about the changed object.
@@ -61,8 +64,8 @@ func publishStorageEvent(ctx context.Context, e event.Event) error {
 		_, err = svc.Create(&queue.Queue{
 			Status:    "initialized",
 			InputUri:  fmt.Sprintf("gs://%s/%s", data.Bucket, data.Name),
-			OutputUri: fmt.Sprintf("gs://%s/%s", videoOutputBucket, data.MediaID),
-			MediaID:   data.MediaID,
+			OutputUri: fmt.Sprintf("gs://%s/%s", videoOutputBucket, data.MetaData.MediaId),
+			MediaID:   data.MetaData.MediaId,
 			Type:      "transcode",
 		})
 

@@ -94,6 +94,20 @@ func (ms *MediaService) Update(id string, updates *[]firestore.Update) error {
 	return nil
 }
 
+func (ms *MediaService) Get(id string) (*Media, error) {
+
+	docRef := ms.db.Collection(ms.collection).Doc(id)
+
+	doc, err := docRef.Get(context.Background())
+
+	if err != nil {
+		return nil, err
+	}
+	var m Media
+	doc.DataTo(&m)
+	return &m, err
+}
+
 // Given the ID, this will apply the passed in updates
 func (ms *MediaService) Query(q *MediaQueryInput) (*MediaQueryOutput, error) {
 
