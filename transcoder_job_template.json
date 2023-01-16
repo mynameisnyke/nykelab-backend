@@ -1,0 +1,66 @@
+{
+  "config": {
+    "elementaryStreams": [
+      {
+        "key": "video-stream0",
+        "videoStream": {
+          "h264": {
+            "heightPixels": 1080,
+            "widthPixels": 1920,
+            "bitrateBps": 550000,
+            "frameRate": 60
+          }
+        }
+      },
+      {
+        "key": "video-stream1",
+        "videoStream": {
+          "h264": {
+            "heightPixels": 720,
+            "widthPixels": 1280,
+            "bitrateBps": 900000,
+            "frameRate": 60
+          }
+        }
+      },
+      {
+        "key": "video-stream2",
+        "videoStream": {
+          "h264": {
+            "heightPixels": 360,
+            "widthPixels": 640,
+            "bitrateBps": 900000,
+            "frameRate": 60
+          }
+        }
+      },
+      {
+        "key": "audio-stream0",
+        "audioStream": {
+          "codec": "aac",
+          "bitrateBps": 64000
+        }
+      }
+    ],
+    "muxStreams": [
+      {
+        "key": "h264_1080",
+        "container": "mp4",
+        "elementaryStreams": ["video-stream0", "audio-stream0"]
+      },
+      {
+        "key": "h264_720",
+        "container": "mp4",
+        "elementaryStreams": ["video-stream1", "audio-stream0"]
+      },
+      {
+        "key": "h264_360",
+        "container": "mp4",
+        "elementaryStreams": ["video-stream2", "audio-stream0"]
+      }
+    ],
+    "pubsubDestination": {
+      "topic": "projects/nykelab/topics/trancodes-status-dev"
+    }
+  }
+}
