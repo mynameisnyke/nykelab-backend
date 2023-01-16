@@ -24,6 +24,7 @@ type Media struct {
 	DateAdded          time.Time `json:"date_added" firestore:"date_added"`
 	DateCreated        time.Time `json:"date_created" firestore:"date_created,omitempty"`
 	Status             string    `json:"status" firestore:"status"`
+	TranscodeID        string    `json:"transcode_id" firestore:"transcode_id"`
 }
 
 type MediaService struct {

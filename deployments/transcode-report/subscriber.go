@@ -2,6 +2,8 @@ package publish
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -36,10 +38,13 @@ type MessagePublishedData struct {
 // See the documentation for more details:
 // https://cloud.google.com/pubsub/docs/reference/rest/v1/PubsubMessage
 type PubSubMessage struct {
-	Job JobResult `json:"data"`
+	Data string `json:"data"`
+}
+type JobResult struct {
+	Job Details `json:"job"`
 }
 
-type JobResult struct {
+type Details struct {
 	Name  string    `json:"name"`
 	State string    `json:"string"`
 	Error JobStatus `json:"error"`
@@ -61,7 +66,15 @@ func reportTranscode(ctx context.Context, e event.Event) error {
 		return fmt.Errorf("event.DataAs: %v", err)
 	}
 
-	fmt.Printf("JOB NAME: %s\n", msg.Message.Job.Name)
+	var jobResult JobResult
+	data, err := base64.StdEncoding.DecodeString(msg.Message.Data)
+	if err != nil {
+		return err
+	}
+	if err := json.Unmarshal(data, &jobResult); err != nil {
+		return err
+	}
+	fmt.Printf("JOB NAME: %s\n", jobResult.Job.Name)
 	// // Create the transcode job
 	// job, err := svc.CreateJob(&transcode.CreateJobInput{
 	// 	InputUri:  q.InputUri,
